@@ -1,0 +1,25 @@
+{
+    "name": "React Chrome Extension",
+    "version": "1.0.0",
+    "manifest_version": 3,
+    "background": {
+      "service_worker": "sesametimeBackground.js"
+    },
+    "permissions": [
+      "tabs", 
+      "storage",
+      "alarms",
+      "notifications",
+      "activeTab"
+    ],
+    "content_scripts": [
+      {
+        "matches": [
+          "https://app.sesametime.com/login",
+          "https://app.sesametime.com/login-sso",
+          "https://app.sesametime.com/employee/portal"
+        ],
+        "js": ["sesametimeContent.js"]
+      }
+    ]  
+  }
