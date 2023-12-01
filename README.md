@@ -1,0 +1,1 @@
+# auto-clicks-chrome-extension
