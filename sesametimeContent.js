@@ -52,8 +52,9 @@ async function typeEmail(email) {
 }
 
 async function fromEmployeePortalPage() {
-    await sleep(2);
-    await retry(async () => await clickButton('Entrar'));
+    await sleep(3);
+    await retry(async () => await clickButton('Entrar', 20));
+    await window.close();
 }
 
 async function fromLoginSSOPage() {

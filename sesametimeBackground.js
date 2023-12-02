@@ -1,37 +1,34 @@
-function sesameButtonWasClicked(textContent) {
-    const spans = document.querySelectorAll('span');
-    const buttons = document.querySelectorAll('button');
+const sesametimeAlarm = "SesameTimeAlarm";
+const sesametimeURL = "https://app.sesametime.com/employee/portal";
+const frequency = 3 * 60 // 3 hours
 
-    for (const element of [...spans, ...buttons]) {
-        if (element.textContent.trim() === textContent) {
-            return true
-        }
-    }
+async function startSesameTime() {
+    // // check if the sesametimeAlarm is running and return if it is running
+    // const alarms = await chrome.alarms.getAll();
+    // const sesametimeAlarm = await alarms.find(alarm => alarm.name === sesametimeAlarm);
+    // if (sesametimeAlarm) return;
 
-    return false;
+    // close any sesametime alarms that might be running
+    await chrome.alarms.clear(sesametimeAlarm);
+
+    // create an chorme alarm to run every 5 minutes, 
+    // it should be enough to keep the session alive  each time that the alarm is triggered, 
+    // the callback function will be called and it will open a new tab with the sesametime portal
+    await chrome.alarms.create(sesametimeAlarm, { periodInMinutes: frequency });
 }
 
-chrome.tabs.onRemoved.addListener(function(tabId, changeInfo, tab) {
+chrome.runtime.onInstalled.addListener(async () => await startSesameTime());
+chrome.runtime.onStartup.addListener(async () => await startSesameTime());
 
-    chrome.storage.session.get(["lastSesametimeSuccesfulClick"]).then((result) => {
-        
+chrome.alarms.onAlarm.addListener(async ({ reason }) => {
+    // ignore on weekend base on the current time zone where the extension is running
+    const date = new Date();
+    const day = date.getDay();
+    if (day === 0 || day === 6) return;
 
-        const lastActionTimestamp = result.lastSesametimeSuccesfulClick || 0;
-        const elapseTimeInMilliseconds = 3 * 60 * 1000; // each 5 minutes in milliseconds
-        const currentDate = new Date().getTime();
+    // ignore on the hour of 00:00 to 06:00
+    const hour = date.getHours();
+    if (hour < 6) return;
 
-        if (currentDate - lastActionTimestamp >= elapseTimeInMilliseconds) {
-
-            // Open a new tab:
-            chrome.tabs.create({ url: "https://app.sesametime.com/employee/portal" });
-
-            if ( sesameButtonWasClicked(textContent) ){
-                // Save the current timestamp as the last action timestamp:
-                chrome.storage.sessions.set({ 'lastSesametimeSuccesfulClick': currentDate });
-            }
-
-            // Close the current tab:
-            chrome.windows.close();
-        }
-    });
+    await chrome.tabs.create({ url: sesametimeURL });
 });

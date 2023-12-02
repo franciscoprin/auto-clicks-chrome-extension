@@ -3,14 +3,17 @@
     "version": "1.0.0",
     "manifest_version": 3,
     "background": {
-      "service_worker": "sesametimeBackground.js"
+      "service_worker": "sesametimeBackground.js",
+      "type": "module"
     },
+    "minimum_chrome_version": "92",
     "permissions": [
       "tabs", 
       "storage",
       "alarms",
       "notifications",
-      "activeTab"
+      "activeTab",
+      "identity"
     ],
     "content_scripts": [
       {
@@ -21,5 +24,5 @@
         ],
         "js": ["sesametimeContent.js"]
       }
-    ]  
+    ]
   }
