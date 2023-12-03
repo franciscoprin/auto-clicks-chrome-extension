@@ -1,28 +1,32 @@
 {
-    "name": "React Chrome Extension",
-    "version": "1.0.0",
-    "manifest_version": 3,
-    "background": {
-      "service_worker": "sesametimeBackground.js",
-      "type": "module"
-    },
-    "minimum_chrome_version": "92",
-    "permissions": [
-      "tabs", 
-      "storage",
-      "alarms",
-      "notifications",
-      "activeTab",
-      "identity"
-    ],
-    "content_scripts": [
-      {
-        "matches": [
-          "https://app.sesametime.com/login",
-          "https://app.sesametime.com/login-sso",
-          "https://app.sesametime.com/employee/portal"
-        ],
-        "js": ["sesametimeContent.js"]
-      }
-    ]
-  }
+  "name": "React Chrome Extension",
+  "version": "1.0.0",
+  "manifest_version": 3,
+  "background": {
+    "service_worker": "sesametimeBackground.js",
+    "type": "module"
+  },
+  "host_permissions": [
+    "*://app.sesametime.com/*"
+  ],
+  "minimum_chrome_version": "92",
+  "permissions": [
+    "tabs", 
+    "storage",
+    "alarms",
+    "notifications",
+    "activeTab",
+    "identity",
+    "webRequest"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://app.sesametime.com/login",
+        "https://app.sesametime.com/login-sso",
+        "https://app.sesametime.com/employee/portal"
+      ],
+      "js": ["sesametimeContent.js"]
+    }
+  ]
+}

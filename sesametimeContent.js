@@ -24,11 +24,11 @@ async function retry(callBack, maxRetries = 10, delayBetweenRetries = 2) {
     async function attempt() {
         if (retries >= maxRetries) {
             console.log(`Not found after ${maxRetries} attempts.`);
-            return;
+            return false;
         }
 
         if (await callBack()) {
-            return;
+            return true;
         }
 
         retries++;
@@ -53,7 +53,16 @@ async function typeEmail(email) {
 
 async function fromEmployeePortalPage() {
     await sleep(3);
-    await retry(async () => await clickButton('Entrar', 20));
+    const buttonWasClicked = await retry(async () => await clickButton('Entrar', 20));
+
+    if (buttonWasClicked) {
+        // Send a message to the service worker
+        chrome.runtime.sendMessage({ type: 'buttonWasClicked' }, (response) => {
+            // Got an asynchronous response with the data from the service worker.
+            console.log('The service worker registers that the clock-in button was clicked at: ', response);
+        });
+    }
+
     await window.close();
 }
 
