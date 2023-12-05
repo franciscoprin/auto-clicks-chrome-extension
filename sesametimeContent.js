@@ -16,6 +16,20 @@ async function isPageFullyLoaded() {
     });
 }
 
+// find elemetn by text content and return true if they are visible otherwise returns false.
+async function isElementVisible(textContent) {
+    const spans = document.querySelectorAll('span');
+    const buttons = document.querySelectorAll('button');
+
+    for (const element of [...spans, ...buttons]) {
+        if (element.textContent.trim() === textContent) {
+            return element.offsetParent !== null;
+        }
+    }
+
+    return false; // Button not found
+}
+
 async function clickButton(textContent) {
     const spans = document.querySelectorAll('span');
     const buttons = document.querySelectorAll('button');
@@ -31,24 +45,16 @@ async function clickButton(textContent) {
 }
 
 async function retry(callBack, maxRetries = 10, delayBetweenRetries = 2) {
-    let retries = 0;
 
-    async function attempt() {
-        if (retries >= maxRetries) {
-            console.log(`Not found after ${maxRetries} attempts.`);
-            return false;
-        }
-
+    for (let i = 0; i < maxRetries; i++) {
         if (await callBack()) {
             return true;
         }
-
-        retries++;
         await sleep(delayBetweenRetries);
-        await attempt();
     }
 
-    await attempt();
+    console.log(`Not found after ${maxRetries} attempts.`);
+    return false;
 }
 
 async function typeEmail(email) {
@@ -65,14 +71,16 @@ async function typeEmail(email) {
 
 // TODO: after loging in, the below code doesn't work anymore.
 async function handleEmployeePortalPage() {
-    const buttonWasClicked = await retry(async () => await clickButton('Entrar'), 5, 2);
+    await retry(async () => await clickButton('Entrar'), 5, 2);
+    const entrarButtonIsVisible = await retry(async () => await isElementVisible('Entrar'), 5, 2);
+    const salirButtonIsVisible = await retry(async () => await isElementVisible('Salir'), 5, 2);
 
-    await sleep(6); // Wait while the `Entrar` button is being clicked
-    // TODO: create better loggic to check if `entrar` the button was clicked and the page is fully loaded
+    // If the `Entrar` button isn't visible and the `salir` button is visible, it means that the clock-in button was pressed successfully.
+    const clockInButtonWasClicked = !entrarButtonIsVisible && salirButtonIsVisible;
 
-    if (buttonWasClicked) {
+    if (clockInButtonWasClicked) {
         // Send a message to the service worker
-        chrome.runtime.sendMessage({ type: 'buttonWasClicked' }, (response) => {
+        chrome.runtime.sendMessage({ type: 'clockInButtonWasClicked' }, (response) => {
             // Got an asynchronous response with the data from the service worker.
             console.log('The service worker registers that the clock-in button was clicked at: ', response);
         });

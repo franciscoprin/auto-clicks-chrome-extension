@@ -47,7 +47,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const senderURL = sender.tab.url;
     if (senderURL.startsWith(baseSesametimeURL)) {
         // The background service answer back according to the message type
-        if (message.type === 'buttonWasClicked') {
+        if (message.type === 'clockInButtonWasClicked') {
             // Store current date time in the session storage:
             clockInButtonClickedAt =  new Date();
 
