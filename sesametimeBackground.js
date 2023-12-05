@@ -2,24 +2,32 @@
 const sesametimeAlarmName = 'SesameTimeAlarm';
 const baseSesametimeURL = 'https://app.sesametime.com';
 const sesametimePortalURL = `${baseSesametimeURL}/employee/portal`;
-const sesametimeAlarmFrequency = 2 * 60 // 2 hours
+const sesametimeAlarmFrequency = 0.5 // 2 * 60 // 2 hours
 const sesametimeAlarmStartAt = 6; // hours - military time
 let clockInButtonClickedAt = null;
 
-async function handleSesameTimeAlarm() {
+async function shouldIgnoreSesameTimeEvents() {
     // Get now time
     const now = new Date();
 
-    // Ignore if the clock-in button was clicked today
-    if ( clockInButtonClickedAt != null && now.getDate() == clockInButtonClickedAt.getDate()) return;
-
     // ignore on weekend base on the current time zone where the extension is running
     const day = now.getDay();
-    if (day === 0 || day === 6) return;
+    if (day === 0 || day === 6) return true;
 
     // ignore on the hour of 00:00 to 06:00 - military time
     const hour = now.getHours();
-    if (hour < sesametimeAlarmStartAt) return;
+    if (hour < sesametimeAlarmStartAt) return true;
+
+    // Ignore if the clock-in button was clicked today
+    if ( clockInButtonClickedAt != null && now.getDate() == clockInButtonClickedAt.getDate()) return true;
+
+    return false;
+}
+
+async function handleSesameTimeAlarm() {
+    // ignore base on conditions
+    const ignoreSesameTimeEvents = await shouldIgnoreSesameTimeEvents()
+    if (ignoreSesameTimeEvents) return;
 
     // open a new tab with the sesametime portal
     await chrome.tabs.create({ url: sesametimePortalURL });
@@ -46,6 +54,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             // Send a response to the content script
             sendResponse(clockInButtonClickedAt.toString());
         }
+
+        // NOTE: The browser should be synced with the user gmail account:
+        //       otherwise the userInfo.email will return an empty string
+        else if(message.type === 'getCurrentLoggedGmailEmail') {
+            // Get the current logger user email from chrome.identity
+            chrome.identity.getProfileUserInfo((userInfo) => {
+                // Send a response to the content script
+                sendResponse(userInfo.email);
+            });
+        }
+
+        else if (message.type === 'closeCurrentTab') {
+            // Get the current tab id
+            const tabId = sender.tab.id;
+
+            // Close the current tab
+            chrome.tabs.remove(tabId);
+        }
     }
 
     // Return true to indicate that the response should be sent asynchronously
@@ -63,3 +89,21 @@ chrome.alarms.onAlarm.addListener(async ( alarm ) => {
             break;
     }
 });
+
+// On tab update if the url starts with the baseSesametimeURL excute chrome.scripting.executeScript
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    // ignore base on conditions
+    const ignoreSesameTimeEvents = await shouldIgnoreSesameTimeEvents()
+    if (ignoreSesameTimeEvents) return;
+
+    if ( 
+        // Trigger when the page status is loaded.
+        changeInfo.status == 'complete' && tab.url.startsWith('https://app.sesametime.com')
+    ) {
+        await chrome.scripting.executeScript({
+            target: {tabId: tabId, allFrames: true},
+            // files: ['content_scripts/cscript.js'],
+            files: ['sesametimeContent.js'],
+        });
+    }
+});   

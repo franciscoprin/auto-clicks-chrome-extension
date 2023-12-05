@@ -2,16 +2,28 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms * 1000));
 }
 
+// Create a function that check if the browser is fully loaded.
+// This function will be used to wait for the page to be fully
+// loaded before trying to click on the button.
+async function isPageFullyLoaded() {
+    return new Promise(resolve => {
+        const interval = setInterval(() => {
+            if (document.readyState === 'complete') {
+                clearInterval(interval);
+                resolve(true);
+            }
+        }, 100);
+    });
+}
+
 async function clickButton(textContent) {
     const spans = document.querySelectorAll('span');
     const buttons = document.querySelectorAll('button');
 
     for (const element of [...spans, ...buttons]) {
         if (element.textContent.trim() === textContent) {
-            return new Promise(resolve => {
-                element.click();
-                resolve(true); // Button clicked successfully
-            });
+            await element.click();
+            return true;
         }
     }
 
@@ -51,9 +63,12 @@ async function typeEmail(email) {
     return false;
 }
 
-async function fromEmployeePortalPage() {
-    await sleep(3);
-    const buttonWasClicked = await retry(async () => await clickButton('Entrar', 20));
+// TODO: after loging in, the below code doesn't work anymore.
+async function handleEmployeePortalPage() {
+    const buttonWasClicked = await retry(async () => await clickButton('Entrar'), 5, 2);
+
+    await sleep(6); // Wait while the `Entrar` button is being clicked
+    // TODO: create better loggic to check if `entrar` the button was clicked and the page is fully loaded
 
     if (buttonWasClicked) {
         // Send a message to the service worker
@@ -63,36 +78,42 @@ async function fromEmployeePortalPage() {
         });
     }
 
-    await window.close();
+    // Ask background process to close current tab
+    chrome.runtime.sendMessage({ type: 'closeCurrentTab'});
 }
 
-async function fromLoginSSOPage() {
-    await sleep(2);
-    await retry(async () => await typeEmail('<YOUR_EMAIL.com>'));
-    await retry(async () => await clickButton('Access with SSO'));
-    await fromEmployeePortalPage();
+async function handleLoginSSOPage() {
+    chrome.runtime.sendMessage({ type: 'getCurrentLoggedGmailEmail' }, async (response) => {
+        if (!response) {
+            alert('Please, sync your browser with your gmail account and try again.');
+            return;
+        }
+
+        await retry(async () => await typeEmail(response));
+        await retry(async () => await clickButton('Access with SSO'));
+    });
 }
 
-async function fromLoginPage() {
-    await sleep(2);
+async function handleLoginPage() {
+    await isPageFullyLoaded();
     await retry(async () => await clickButton('Access with SSO'));
-    await fromLoginSSOPage();
 }
 
 async function handleActionsBasedOnURL() {
     const currentURL = window.location.href;
+    console.log(`[handleActionsBasedOnURL] Current URL: ${currentURL}`);
 
     switch (currentURL) {
         case 'https://app.sesametime.com/login':
-            await fromLoginPage();
+            await handleLoginPage();
             break;
 
         case 'https://app.sesametime.com/login-sso':
-            await fromLoginSSOPage();
+            await handleLoginSSOPage();
             break;
 
         case 'https://app.sesametime.com/employee/portal':
-            await fromEmployeePortalPage();
+            await handleEmployeePortalPage();
             break;
 
         default:

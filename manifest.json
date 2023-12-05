@@ -1,5 +1,5 @@
 {
-  "name": "React Chrome Extension",
+  "name": "Auto Clicks",
   "version": "1.0.0",
   "manifest_version": 3,
   "background": {
@@ -17,16 +17,9 @@
     "notifications",
     "activeTab",
     "identity",
-    "webRequest"
-  ],
-  "content_scripts": [
-    {
-      "matches": [
-        "https://app.sesametime.com/login",
-        "https://app.sesametime.com/login-sso",
-        "https://app.sesametime.com/employee/portal"
-      ],
-      "js": ["sesametimeContent.js"]
-    }
+    "identity.email",
+    "webRequest",
+    "webNavigation",
+    "scripting"
   ]
 }
