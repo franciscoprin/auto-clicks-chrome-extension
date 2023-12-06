@@ -2,7 +2,7 @@
 const sesametimeAlarmName = 'SesameTimeAlarm';
 const baseSesametimeURL = 'https://app.sesametime.com';
 const sesametimePortalURL = `${baseSesametimeURL}/employee/portal`;
-const sesametimeAlarmFrequency = 0.5 // 2 * 60 // 2 hours
+const sesametimeAlarmFrequency = 2 * 60 // 2 hours
 const sesametimeAlarmStartAt = 6; // hours - military time
 let clockInButtonClickedAt = null;
 
@@ -19,15 +19,24 @@ async function shouldIgnoreSesameTimeEvents() {
     if (hour < sesametimeAlarmStartAt) return true;
 
     // Ignore if the clock-in button was clicked today
-    if ( clockInButtonClickedAt != null && now.getDate() == clockInButtonClickedAt.getDate()) return true;
+    console.log(
+        `[shouldIgnoreSesameTimeEvents]`,
+        `\n * now: ${now}`,
+        `\n * clockInButtonClickedAt: ${clockInButtonClickedAt}`,
+    );
+    
+    if ( clockInButtonClickedAt != null && now.getDate() == clockInButtonClickedAt.getDate()) {
+        console.log(`[shouldIgnoreSesameTimeEvents] it was ignored`);
+        return true;
+    }
 
+    console.log(`[shouldIgnoreSesameTimeEvents] it wasn't ignored`);
     return false;
 }
 
 async function handleSesameTimeAlarm() {
     // ignore base on conditions
-    const ignoreSesameTimeEvents = await shouldIgnoreSesameTimeEvents()
-    if (ignoreSesameTimeEvents) return;
+    if (await shouldIgnoreSesameTimeEvents()) return;
 
     // open a new tab with the sesametime portal
     await chrome.tabs.create({ url: sesametimePortalURL });
@@ -39,7 +48,12 @@ chrome.alarms.clear(sesametimeAlarmName);
 // create an chorme alarm to run every 5 minutes, 
 // it should be enough to keep the session alive  each time that the alarm is triggered, 
 // the callback function will be called and it will open a new tab with the sesametime portal
-chrome.alarms.create(sesametimeAlarmName, { periodInMinutes: sesametimeAlarmFrequency });
+chrome.alarms.create(
+    sesametimeAlarmName, { 
+        delayInMinutes: 0, // Trigger immediately upon creation
+        periodInMinutes: sesametimeAlarmFrequency,
+    }
+);
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
@@ -53,6 +67,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             // Send a response to the content script
             sendResponse(clockInButtonClickedAt.toString());
+            console.log(
+                `[onMessage.addListener][${message.type}]`,
+                `\n * clockInButtonClickedAt: ${clockInButtonClickedAt}`,
+            );
         }
 
         // NOTE: The browser should be synced with the user gmail account:
@@ -62,6 +80,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             chrome.identity.getProfileUserInfo((userInfo) => {
                 // Send a response to the content script
                 sendResponse(userInfo.email);
+                console.log(
+                    `[onMessage.addListener][${message.type}]`,
+                    `\n * userInfo.email: ${userInfo.email}`,
+                );
             });
         }
 
@@ -71,6 +93,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
             // Close the current tab
             chrome.tabs.remove(tabId);
+            console.log(
+                `[onMessage.addListener][${message.type}]`,
+                `\n * tabId: ${tabId}`,
+            );
         }
     }
 
@@ -92,9 +118,11 @@ chrome.alarms.onAlarm.addListener(async ( alarm ) => {
 
 // On tab update if the url starts with the baseSesametimeURL excute chrome.scripting.executeScript
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+    if (changeInfo.status != 'complete') return;
+    if (!tab.url.startsWith('https://app.sesametime.com')) return;
+
     // ignore base on conditions
-    const ignoreSesameTimeEvents = await shouldIgnoreSesameTimeEvents()
-    if (ignoreSesameTimeEvents) return;
+    if (await shouldIgnoreSesameTimeEvents()) return;
 
     if ( 
         // Trigger when the page status is loaded.

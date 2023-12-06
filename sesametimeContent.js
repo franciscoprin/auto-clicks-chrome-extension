@@ -72,8 +72,8 @@ async function typeEmail(email) {
 // TODO: after loging in, the below code doesn't work anymore.
 async function handleEmployeePortalPage() {
     await retry(async () => await clickButton('Entrar'), 5, 2);
-    const entrarButtonIsVisible = await retry(async () => await isElementVisible('Entrar'), 5, 2);
-    const salirButtonIsVisible = await retry(async () => await isElementVisible('Salir'), 5, 2);
+    const entrarButtonIsVisible = await retry(async () => await isElementVisible('Entrar'), 2, 1.5);
+    const salirButtonIsVisible = await retry(async () => await isElementVisible('Salir'), 2, 1.5);
 
     // If the `Entrar` button isn't visible and the `salir` button is visible, it means that the clock-in button was pressed successfully.
     const clockInButtonWasClicked = !entrarButtonIsVisible && salirButtonIsVisible;
@@ -82,7 +82,7 @@ async function handleEmployeePortalPage() {
         // Send a message to the service worker
         chrome.runtime.sendMessage({ type: 'clockInButtonWasClicked' }, (response) => {
             // Got an asynchronous response with the data from the service worker.
-            console.log('The service worker registers that the clock-in button was clicked at: ', response);
+            console.log(`The service worker registers that the clock-in button was clicked at: ${response}`);
         });
     }
 
